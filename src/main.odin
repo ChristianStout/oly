@@ -8,7 +8,10 @@ CalcTokenId :: enum int {
 	IGNORE,
 	PLUS,
 	MINUS,
+	ASSIGN,
+	COLON,
 	NUMBER,
+	IDENTIFIER,
 	UNKNOWN,
 }
 
@@ -18,27 +21,22 @@ CalcToken :: struct {
 	// ... any relavant information for your program
 }
 
-plus :: proc(lexer: ^lex.Lexer, p: string) -> bool {
-	return p == "+"
+id_callback :: proc(lexer: ^lex.Lexer, token: ^lex.Token, p: string) -> rawptr {
+	fmt.println("Hello from id_callback : %v", p)
+
+	return nil
 }
 
-minus :: proc(lexer: ^lex.Lexer, p: string) -> bool {
-	return p == "-"
-}
-
-number :: proc(lexer: ^lex.Lexer, p:string) -> bool {
-	return true
-}
 
 main :: proc() {
-	lexer: ^lex.Lexer = lex.new_default()
-
-	rules := [?]lex.TokenRule {
-		lex.TokenRule { cast(int)CalcTokenId.PLUS, plus },
-		lex.TokenRule { cast(int)CalcTokenId.PLUS, minus },
-		lex.TokenRule { cast(int)CalcTokenId.PLUS, number },
-
+	rules := [?]^lex.TokenRule {
+		lex.define_token(cast(int)CalcTokenId.PLUS, "+"),
+		lex.define_token(cast(int)CalcTokenId.MINUS, "-"),
+		lex.define_token(cast(int)CalcTokenId.ASSIGN, "="),
+		lex.define_token(cast(int)CalcTokenId.COLON, ":"),
+		lex.define_token(cast(int)CalcTokenId.NUMBER, "[0-9]+"),
+		lex.define_token(cast(int)CalcTokenId.IDENTIFIER, "[_a-zA-Z][_a-zA-Z0-9]*", id_callback),
+		lex.define_token(cast(int)CalcTokenId.UNKNOWN, "."),
 	}
-
 
 }

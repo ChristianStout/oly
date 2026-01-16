@@ -11,7 +11,8 @@ Token :: struct {
 
 TokenRule :: struct {
 	token_id: int,
-	rule: proc(lexer: ^Lexer, p: string) -> bool
+	rule: string,
+	callback: proc(lexer: ^Lexer, token: ^Token, p: string) -> rawptr
 }
 
 Lexer :: struct {
@@ -19,24 +20,34 @@ Lexer :: struct {
 	tokens: [dynamic]Token,				// OLY's own tokens (maybe able to be disabled by the user if they so choose)
 	lineno: int,						// Line number
 	pos: int, 							// Position in file
-	criteria: proc(p: rune) -> bool	// When do we decide to loop through the rules? default is alpha-numeric
-										// once criteria evaluates to false, then the lexer loops though the rules until it finds a match
 }
 
-is_alpha_numeric :: proc(char: rune) -> bool {
-	return (char >= 'a' && char <= 'z') || (char >= 'A' && char <= 'Z') || (char >= '0' && char <= '9') || char == '_'
+LexerError :: enum {
+	UnkownToken
 }
 
 new_default :: proc(allocator := context.allocator) -> ^Lexer {
 	lexer := new(Lexer, allocator)
 	lexer.tokens = make([dynamic]Token, allocator)
-	lexer.criteria = is_alpha_numeric
 
 	return lexer
 }
 
-tokenize :: proc(lexer: ^Lexer, rules: []TokenRule, $T: typeid, allocator := context.allocator) -> []T {
-	user_tokens := make([]T, allocator)
+define_token :: proc(id: int, rule: string, callback: proc(lexer: ^Lexer, token: ^Token, p: string) -> rawptr = nil, allocator := context.allocator) -> ^TokenRule {
+	token_rule := new(TokenRule, allocator)
+	token_rule.token_id = id
+	token_rule.rule = rule
+	token_rule.callback = callback
 
-	return user_tokens
+	return token_rule
+}
+
+tokenize :: proc(rules: []TokenRule, lexer: ^Lexer = nil, allocator := context.allocator) -> ([]Token, ^LexerError) {
+	if lexer == nil {
+		lexer := new_default(allocator)
+	}
+
+	tokens := make([dynamic]Token)
+
+	return tokens[:], nil
 }
