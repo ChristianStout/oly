@@ -1,9 +1,9 @@
 package lex
 
-MAX_TOKEN_SIZE :: 256 // just an assumption, add more space if you need it
+import "core:unicode/utf8"
 
 Token :: struct {
-	type: string,
+	id: int,
 	lexeme: string,
 	file_pos: int,
 	lineno: int,
@@ -11,29 +11,43 @@ Token :: struct {
 
 TokenRule :: struct {
 	token_id: int,
-	rule: string,
-	callback: proc(lexer: ^Lexer, token: ^Token, p: string) -> rawptr
+	rule: proc(string) -> bool,
+	callback: proc(lexer: ^Lexer, token: ^Token, p: string)
 }
 
 Lexer :: struct {
-	curr_match: [MAX_TOKEN_SIZE]rune,	// The current unmatched string
+	curr_match: [dynamic]rune,	// The current unmatched string
 	tokens: [dynamic]Token,				// OLY's own tokens (maybe able to be disabled by the user if they so choose)
+	file_pos: int, 						// Position in file
 	lineno: int,						// Line number
-	pos: int, 							// Position in file
 }
 
 LexerError :: enum {
+	None,
 	UnkownToken
 }
 
 new_default :: proc(allocator := context.allocator) -> ^Lexer {
 	lexer := new(Lexer, allocator)
 	lexer.tokens = make([dynamic]Token, allocator)
+	lexer.curr_match = make([dynamic]rune, allocator)
+	lexer.lineno = 1
 
 	return lexer
 }
 
-define_token :: proc(id: int, rule: string, callback: proc(lexer: ^Lexer, token: ^Token, p: string) -> rawptr = nil, allocator := context.allocator) -> ^TokenRule {
+delete_lexer :: proc(lexer: ^Lexer) {
+	delete(lexer.tokens)
+	delete(lexer.curr_match)
+	free(lexer)
+}
+
+define_token :: proc(
+	id: int,
+	rule: proc(string) -> bool,
+	callback: proc(lexer: ^Lexer, token: ^Token, p: string) = nil,
+	allocator := context.allocator
+) -> ^TokenRule {
 	token_rule := new(TokenRule, allocator)
 	token_rule.token_id = id
 	token_rule.rule = rule
@@ -42,12 +56,66 @@ define_token :: proc(id: int, rule: string, callback: proc(lexer: ^Lexer, token:
 	return token_rule
 }
 
-tokenize :: proc(rules: []TokenRule, lexer: ^Lexer = nil, allocator := context.allocator) -> ([]Token, ^LexerError) {
+find_first_match_index :: proc(s: string, rules: []^TokenRule) -> int {
+	for rule, i in rules {
+		if rule.rule(s) {
+			return i
+		}
+	}
+	return -1
+}
+
+tokenize :: proc(
+	file: string,
+	rules: []^TokenRule,
+	ignore: []rune = []rune{' ', '\n', '\t'},
+	lexer: ^Lexer = nil,
+	allocator := context.allocator
+) -> ([]^Token, LexerError) {
+	lexer := lexer
 	if lexer == nil {
-		lexer := new_default(allocator)
+		lexer = new_default(allocator)
+	}
+	defer free(lexer)
+
+	tokens := make([dynamic]^Token)
+	curr_match := lexer.curr_match
+	prev_match_index := -1
+
+	for c in file {
+		lexer.file_pos += 1
+		if c == '\n' {
+			lexer.lineno += 1
+		}
+		
+		append(&curr_match, c)
+		
+		lexeme := utf8.runes_to_string(curr_match[:], allocator)
+		token_generated := false
+		defer if !token_generated {
+			delete(lexeme)
+		}
+		
+		curr_match_index := find_first_match_index(lexeme, rules)
+		defer prev_match_index = curr_match_index
+
+		if curr_match_index == -1 && prev_match_index >= 0 {
+			token_generated = true
+			token := new(Token, allocator)
+			token.id = rules[prev_match_index].token_id
+			token.lexeme = lexeme
+			token.file_pos = lexer.file_pos
+			token.lineno = lexer.lineno
+
+			callback := rules[prev_match_index].callback
+			if callback != nil {
+				callback(lexer, token, lexeme)
+			}
+
+			append(&tokens, token)
+			continue
+		}
 	}
 
-	tokens := make([dynamic]Token)
-
-	return tokens[:], nil
+	return tokens[:], .None
 }

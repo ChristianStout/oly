@@ -21,22 +21,80 @@ CalcToken :: struct {
 	// ... any relavant information for your program
 }
 
-id_callback :: proc(lexer: ^lex.Lexer, token: ^lex.Token, p: string) -> rawptr {
+id_callback :: proc(lexer: ^lex.Lexer, token: ^lex.Token, p: string) {
 	fmt.println("Hello from id_callback : %v", p)
-
-	return nil
 }
 
+plus :: proc(p: string) -> bool {
+	return p == "+"
+}
+
+minus :: proc(p: string) -> bool {
+	return p == "-"
+}
+
+assign :: proc(p: string) -> bool {
+	return p == "="
+}
+
+colon :: proc(p: string) -> bool {
+	return p == ":"
+}
+
+number :: proc(p: string) -> bool {
+	for c in p {
+		if !is_number(c) {
+			return false
+		}
+	}
+	return true
+}
+
+identifier :: proc(p: string) -> bool {
+	for c, i in p {
+		if i == 0 && !is_alpha(c) {
+			return false
+		}
+		if !is_alpha(c) || !is_number(c) {
+			return false
+		}
+	}
+
+	return true
+}
+
+is_alpha :: proc(char: rune) -> bool {
+	return (char >= 'a' && char <= 'z') || (char >= 'A' && char <= 'Z') || char == '_'
+}
+
+is_number :: proc(char: rune) -> bool {
+	return char >= '0' && char <= '9'
+}
+
+unknown :: proc(p: string) -> bool {
+	return len(p) == 1 // single char, this is the lowest precedant token
+}
 
 main :: proc() {
 	rules := [?]^lex.TokenRule {
-		lex.define_token(cast(int)CalcTokenId.PLUS, "+"),
-		lex.define_token(cast(int)CalcTokenId.MINUS, "-"),
-		lex.define_token(cast(int)CalcTokenId.ASSIGN, "="),
-		lex.define_token(cast(int)CalcTokenId.COLON, ":"),
-		lex.define_token(cast(int)CalcTokenId.NUMBER, "[0-9]+"),
-		lex.define_token(cast(int)CalcTokenId.IDENTIFIER, "[_a-zA-Z][_a-zA-Z0-9]*", id_callback),
-		lex.define_token(cast(int)CalcTokenId.UNKNOWN, "."),
+		lex.define_token(cast(int)CalcTokenId.PLUS, plus),
+		lex.define_token(cast(int)CalcTokenId.MINUS, minus),
+		lex.define_token(cast(int)CalcTokenId.ASSIGN, assign),
+		lex.define_token(cast(int)CalcTokenId.COLON, colon),
+		lex.define_token(cast(int)CalcTokenId.NUMBER, number),
+		lex.define_token(cast(int)CalcTokenId.IDENTIFIER, identifier, id_callback),
+		lex.define_token(cast(int)CalcTokenId.UNKNOWN, unknown),
+	}
+	
+	file := "32 + 1 - 42 ; identifier "
+	
+	tokens, err := lex.tokenize(file, rules[:])
+
+	for token in tokens {
+		fmt.println("Token : { id: %d, lexeme: %s }", token.id, token.lexeme)
 	}
 
+	for rule in rules {
+		free(rule)
+	}
 }
