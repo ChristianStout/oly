@@ -68,7 +68,14 @@ find_first_match_index :: proc(s: string, rules: []^TokenRule) -> int {
 	return -1
 }
 
-// is_ignore :: proc()
+is_ignore :: proc(r: rune, ignore: []rune) -> bool {
+	for i in ignore {
+		if r == i {
+			return true
+		}
+	}
+	return false
+}
 
 tokenize :: proc(
 	file: string,
@@ -91,16 +98,21 @@ tokenize :: proc(
 
 	for r in file {
 		token_generated := false
+		ignore_r := is_ignore(r, ignore)
 		lexer.file_pos += 1
 		if r == '\n' {
 			lexer.lineno += 1 
 		}
 
-		append(&curr_str, r)
+		lexeme: string
+		match_index := -1
+		if !ignore_r {
+			append(&curr_str, r)
 
-		lexeme := utf8.runes_to_string(curr_str[:], allocator)
-		match_index := find_first_match_index(lexeme, rules)
-
+			lexeme = utf8.runes_to_string(curr_str[:], allocator)
+			match_index = find_first_match_index(lexeme, rules)
+		}
+	
 		if match_index == -1 && prev_match_index >= 0 {
 			token_generated = true
 			token := new(Token)
@@ -117,22 +129,28 @@ tokenize :: proc(
 			append(&tokens, token)
 
 			clear(&curr_str)
-			append(&curr_str, r)
-			delete(lexeme)
-			lexeme = utf8.runes_to_string(curr_str[:], allocator)
-			match_index = find_first_match_index(lexeme, rules)
+			if !ignore_r {
+				append(&curr_str, r)
+				delete(lexeme)
+				lexeme = utf8.runes_to_string(curr_str[:], allocator)
+				match_index = find_first_match_index(lexeme, rules)
+			}
 		}	
 		
-		if match_index == -1 && prev_match_index == -1 {
-			return nil, .UnkownToken
-		}
+		// if match_index == -1 && prev_match_index == -1 {
+		// 	return nil, .UnkownToken
+		// }
+
+		// if ingore_r {
+
+		// }
 
 		fmt.println("curr_str : ", lexeme, ", token_generated : ", token_generated)
 		
 		if !token_generated {
 			delete(prev_lexeme)
 		}	
-		prev_lexeme = lexeme	 		// TODO: make sure this is not a memory leak
+		prev_lexeme = lexeme
 		prev_match_index = match_index
 		prev_lineno = lexer.lineno
 	}

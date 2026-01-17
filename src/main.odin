@@ -86,7 +86,7 @@ main :: proc() {
 		lex.define_token(cast(int)CalcTokenId.UNKNOWN, unknown),
 	}
 	
-	file := "32+1-42; "
+	file := "32		+1-   42: "
 	
 	tokens, err := lex.tokenize(file, rules[:])
 	if err != nil {
@@ -94,7 +94,7 @@ main :: proc() {
 	}
 
 	for token in tokens {
-		fmt.println("Token : { id: %d, lexeme: %s }", token.id, token.lexeme)
+		fmt.printfln("Token : id: %v, lexeme: %s ", cast(CalcTokenId)token.id, token.lexeme)
 	}
 
 	for rule in rules {
