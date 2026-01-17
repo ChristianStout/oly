@@ -1,6 +1,7 @@
 package lex
 
 import "core:unicode/utf8"
+import "core:fmt"
 
 Token :: struct {
 	id: int,
@@ -16,7 +17,7 @@ TokenRule :: struct {
 }
 
 Lexer :: struct {
-	curr_match: [dynamic]rune,	// The current unmatched string
+	curr_str: [dynamic]rune,			// The current unmatched string
 	tokens: [dynamic]Token,				// OLY's own tokens (maybe able to be disabled by the user if they so choose)
 	file_pos: int, 						// Position in file
 	lineno: int,						// Line number
@@ -24,13 +25,14 @@ Lexer :: struct {
 
 LexerError :: enum {
 	None,
+	TokenRuleWithoutRuleFunction,
 	UnkownToken
 }
 
 new_default :: proc(allocator := context.allocator) -> ^Lexer {
 	lexer := new(Lexer, allocator)
 	lexer.tokens = make([dynamic]Token, allocator)
-	lexer.curr_match = make([dynamic]rune, allocator)
+	lexer.curr_str = make([dynamic]rune, allocator)
 	lexer.lineno = 1
 
 	return lexer
@@ -38,7 +40,7 @@ new_default :: proc(allocator := context.allocator) -> ^Lexer {
 
 delete_lexer :: proc(lexer: ^Lexer) {
 	delete(lexer.tokens)
-	delete(lexer.curr_match)
+	delete(lexer.curr_str)
 	free(lexer)
 }
 
@@ -48,6 +50,7 @@ define_token :: proc(
 	callback: proc(lexer: ^Lexer, token: ^Token, p: string) = nil,
 	allocator := context.allocator
 ) -> ^TokenRule {
+	//TODO: Handle nil rule
 	token_rule := new(TokenRule, allocator)
 	token_rule.token_id = id
 	token_rule.rule = rule
@@ -65,6 +68,8 @@ find_first_match_index :: proc(s: string, rules: []^TokenRule) -> int {
 	return -1
 }
 
+// is_ignore :: proc()
+
 tokenize :: proc(
 	file: string,
 	rules: []^TokenRule,
@@ -79,33 +84,30 @@ tokenize :: proc(
 	defer free(lexer)
 
 	tokens := make([dynamic]^Token)
-	curr_match := lexer.curr_match
+	curr_str := lexer.curr_str
 	prev_match_index := -1
+	prev_lexeme := ""
+	prev_lineno := 0
 
-	for c in file {
-		lexer.file_pos += 1
-		if c == '\n' {
-			lexer.lineno += 1
-		}
-		
-		append(&curr_match, c)
-		
-		lexeme := utf8.runes_to_string(curr_match[:], allocator)
+	for r in file {
 		token_generated := false
-		defer if !token_generated {
-			delete(lexeme)
+		lexer.file_pos += 1
+		if r == '\n' {
+			lexer.lineno += 1 
 		}
-		
-		curr_match_index := find_first_match_index(lexeme, rules)
-		defer prev_match_index = curr_match_index
 
-		if curr_match_index == -1 && prev_match_index >= 0 {
+		append(&curr_str, r)
+
+		lexeme := utf8.runes_to_string(curr_str[:], allocator)
+		match_index := find_first_match_index(lexeme, rules)
+
+		if match_index == -1 && prev_match_index >= 0 {
 			token_generated = true
-			token := new(Token, allocator)
+			token := new(Token)
 			token.id = rules[prev_match_index].token_id
-			token.lexeme = lexeme
-			token.file_pos = lexer.file_pos
-			token.lineno = lexer.lineno
+			token.lexeme = prev_lexeme
+			token.file_pos = lexer.file_pos - 1
+			token.lineno = prev_lineno
 
 			callback := rules[prev_match_index].callback
 			if callback != nil {
@@ -113,8 +115,26 @@ tokenize :: proc(
 			}
 
 			append(&tokens, token)
-			continue
+
+			clear(&curr_str)
+			append(&curr_str, r)
+			delete(lexeme)
+			lexeme = utf8.runes_to_string(curr_str[:], allocator)
+			match_index = find_first_match_index(lexeme, rules)
+		}	
+		
+		if match_index == -1 && prev_match_index == -1 {
+			return nil, .UnkownToken
 		}
+
+		fmt.println("curr_str : ", lexeme, ", token_generated : ", token_generated)
+		
+		if !token_generated {
+			delete(prev_lexeme)
+		}	
+		prev_lexeme = lexeme	 		// TODO: make sure this is not a memory leak
+		prev_match_index = match_index
+		prev_lineno = lexer.lineno
 	}
 
 	return tokens[:], .None
