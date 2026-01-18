@@ -9,6 +9,7 @@ CalcTokenId :: enum int {
 	PLUS,
 	MINUS,
 	ASSIGN,
+	EQUALS,
 	COLON,
 	NUMBER,
 	IDENTIFIER,
@@ -22,7 +23,14 @@ CalcToken :: struct {
 }
 
 id_callback :: proc(lexer: ^lex.Lexer, token: ^lex.Token, p: string) {
-	fmt.println("Hello from id_callback : %v", p)
+	// Callbacks only get called after a token is successfully created.
+	// It gives the lexer, token, and string in order to give the user
+	// the ability to modify the token that is generated if so desired.
+	fmt.printfln("Hello from id_callback : %v", p)
+	cat := [?]string{p, "?"}
+	new_p := strings.concatenate(cat[:])
+	delete(p)
+	token.lexeme = new_p
 }
 
 plus :: proc(p: string) -> bool {
@@ -35,6 +43,10 @@ minus :: proc(p: string) -> bool {
 
 assign :: proc(p: string) -> bool {
 	return p == "="
+}
+
+equals :: proc(p: string) -> bool {
+	return p == "=="
 }
 
 colon :: proc(p: string) -> bool {
@@ -55,7 +67,7 @@ identifier :: proc(p: string) -> bool {
 		if i == 0 && !is_alpha(c) {
 			return false
 		}
-		if !is_alpha(c) || !is_number(c) {
+		if !is_alpha(c) && !is_number(c) {
 			return false
 		}
 	}
@@ -76,17 +88,18 @@ unknown :: proc(p: string) -> bool {
 }
 
 main :: proc() {
-	rules := [?]^lex.TokenRule {
+	rules := []^lex.TokenRule {
 		lex.define_token(cast(int)CalcTokenId.PLUS, plus),
 		lex.define_token(cast(int)CalcTokenId.MINUS, minus),
 		lex.define_token(cast(int)CalcTokenId.ASSIGN, assign),
+		lex.define_token(cast(int)CalcTokenId.EQUALS, equals),
 		lex.define_token(cast(int)CalcTokenId.COLON, colon),
 		lex.define_token(cast(int)CalcTokenId.NUMBER, number),
 		lex.define_token(cast(int)CalcTokenId.IDENTIFIER, identifier, id_callback),
 		lex.define_token(cast(int)CalcTokenId.UNKNOWN, unknown),
 	}
 	
-	file := "32		+1-   42: "
+	file := "32		= ==d+why +1-   42: "
 	
 	tokens, err := lex.tokenize(file, rules[:])
 	if err != nil {

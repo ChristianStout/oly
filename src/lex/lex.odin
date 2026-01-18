@@ -123,7 +123,7 @@ tokenize :: proc(
 
 			callback := rules[prev_match_index].callback
 			if callback != nil {
-				callback(lexer, token, lexeme)
+				callback(lexer, token, prev_lexeme)
 			}
 
 			append(&tokens, token)
