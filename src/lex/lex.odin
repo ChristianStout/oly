@@ -101,7 +101,7 @@ tokenize :: proc(
 		ignore_r := is_ignore(r, ignore)
 		lexer.file_pos += 1
 		if r == '\n' {
-			lexer.lineno += 1 
+			lexer.lineno += 1
 		}
 
 		lexeme: string
@@ -112,7 +112,7 @@ tokenize :: proc(
 			lexeme = utf8.runes_to_string(curr_str[:], allocator)
 			match_index = find_first_match_index(lexeme, rules)
 		}
-	
+
 		if match_index == -1 && prev_match_index >= 0 {
 			token_generated = true
 			token := new(Token)
@@ -135,8 +135,8 @@ tokenize :: proc(
 				lexeme = utf8.runes_to_string(curr_str[:], allocator)
 				match_index = find_first_match_index(lexeme, rules)
 			}
-		}	
-		
+		}
+
 		// if match_index == -1 && prev_match_index == -1 {
 		// 	return nil, .UnkownToken
 		// }
@@ -146,10 +146,10 @@ tokenize :: proc(
 		// }
 
 		fmt.println("curr_str : ", lexeme, ", token_generated : ", token_generated)
-		
+
 		if !token_generated {
 			delete(prev_lexeme)
-		}	
+		}
 		prev_lexeme = lexeme
 		prev_match_index = match_index
 		prev_lineno = lexer.lineno

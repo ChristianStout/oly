@@ -98,9 +98,9 @@ main :: proc() {
 		lex.define_token(cast(int)CalcTokenId.IDENTIFIER, identifier, id_callback),
 		lex.define_token(cast(int)CalcTokenId.UNKNOWN, unknown),
 	}
-	
+
 	file := "32		= ==d+why +1-   42: "
-	
+
 	tokens, err := lex.tokenize(file, rules[:])
 	if err != nil {
 		fmt.println("ERROR OCCURED")
