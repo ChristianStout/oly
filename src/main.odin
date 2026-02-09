@@ -1,7 +1,9 @@
 package oly
 
 import "core:fmt"
+import "core:reflect"
 import "lex"
+import "yacc"
 
 TokenID :: enum int {
 	A,
@@ -36,4 +38,11 @@ main :: proc() {
 	for rule in rules {
 		free(rule)
 	}
+
+  names := reflect.enum_field_names(TokenID)
+  for id in names {
+    fmt.println(id)
+  }
+
+  yacc.build_table(nil, TokenID, nil)
 }
