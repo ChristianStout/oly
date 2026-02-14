@@ -97,7 +97,7 @@ tokenize :: proc(
 	prev_lineno := 0
 	// file := file + "$"
 
-	for r in (file + "$") {
+	for r in file {
 		token_generated := false
 		ignore_r := is_ignore(r, ignore)
 		lexer.file_pos += 1
