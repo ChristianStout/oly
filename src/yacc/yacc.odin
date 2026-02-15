@@ -4,16 +4,16 @@ import "core:reflect"
 import "core:fmt"
 import "../lex"
 
-Parser :: struct {
-  token_stack: [dynamic]string, // ID for the terminal value
-	parse_table: ParseTable,
-	precedence: []string,
-}
-
-ParseTable :: struct {
-	first: string,
-	follow: [dynamic]string,
-}
+// Parser :: struct {
+//     token_stack: [dynamic]string, // ID for the terminal value
+// 	parse_table: ParseTable,
+// 	precedence: []string,
+// }
+//
+// ParseTable :: struct {
+// 	first: string,
+// 	follow: [dynamic]string,
+// }
 
 ParseRule :: struct {
 	name: string,
@@ -33,9 +33,9 @@ build_table :: proc(tokens: []^lex.Token, token_type: typeid, rules: []ParseRule
 	table := new(ParseTable, allocator)
 
 	token_names := reflect.enum_field_names(token_type)
-  for name in token_names {
-    fmt.println("Token Name: ", name)
-  }
+    for name in token_names {
+        fmt.println("Token Name: ", name)
+    }
 
 	return table
 }
